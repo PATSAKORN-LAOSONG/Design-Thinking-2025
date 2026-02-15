@@ -2,13 +2,13 @@
 <img width="1011" height="477" alt="image" src="https://github.com/user-attachments/assets/4c80075f-ab1f-4fa8-8a7e-2a7d14a89749" />
 
 # ดึง library
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium import webdriver ,
+from selenium.webdriver.chrome.service import Service ,
+from selenium.webdriver.chrome.options import Options ,
+from selenium.webdriver.common.by import By ,
+from webdriver_manager.chrome import ChromeDriverManager ,
+from selenium.webdriver.support.ui import WebDriverWait ,
+from selenium.webdriver.support import expected_conditions as EC 
 
 # 1. ตั้งค่า Chrome Options
 chrome_options = Options()
@@ -18,7 +18,7 @@ service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 try:
-    # 3. เข้าเว็บเป้าหมาย
+    # 3. เข้าเว็บ
     url = "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings"
     driver.get(url)
 
