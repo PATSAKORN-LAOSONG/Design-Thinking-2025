@@ -1,0 +1,8 @@
+BLOOD PRESSURE CATEGORY,SYSTOLIC mm Hg (top/upper number),and/or,DIASTOLIC mm Hg (bottom/lower number)
+NORMAL,LESS THAN 120,and,LESS THAN 80
+ELEVATED,120 – 129,and,LESS THAN 80
+STAGE 1 HYPERTENSION (High Blood Pressure),130 – 139,or,80 – 89
+STAGE 2 HYPERTENSION (High Blood Pressure),140 OR HIGHER,or,90 OR HIGHER
+"SEVERE HYPERTENSION (If you don’t have symptoms*, call your health care professional.)",HIGHER THAN 180,and/or,HIGHER THAN 120
+"HYPERTENSIVE EMERGENCY (If you have any of these symptoms*, call 911.)",HIGHER THAN 180,and/or,HIGHER THAN 120
+"*symptoms: chest pain, shortness of breath, back pain, numbness, weakness, change in vision or difficulty speaking"
