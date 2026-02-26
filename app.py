@@ -4,12 +4,20 @@ import pandas as pd
 st.set_page_config(page_title="ระบบประเมินระดับความดันโลหิต", page_icon="🩺")
 
 st.title("🩺 ระบบประเมินระดับความดันโลหิต")
-st.write("กรอกค่าความดันโลหิตของคุณ ระบบจะประเมินระดับตามเกณฑ์มาตรฐาน")
+st.write("กรอกค่าความดันโลหิตของคุณ ระบบจะประเมินระดับตามเกณฑ์จากไฟล์ CSV")
 
-# โหลดไฟล์ตารางจาก CSV
 df = pd.read_csv("table_1.csv")
 
-# แปลระดับเป็นภาษาไทย
+# จัดลำดับความรุนแรง (มาก → น้อย)
+severity_order = {
+    "EMERGENCY": 6,
+    "SEVERE": 5,
+    "STAGE 2": 4,
+    "STAGE 1": 3,
+    "ELEVATED": 2,
+    "NORMAL": 1
+}
+
 thai_translation = {
     "NORMAL": "ระดับปกติ",
     "ELEVATED": "ระดับค่อนข้างสูง",
@@ -19,99 +27,89 @@ thai_translation = {
     "EMERGENCY": "ภาวะฉุกเฉิน ควรพบแพทย์ทันที"
 }
 
-# คำแนะนำสุขภาพ
-advice_text = {
-    "NORMAL": "รักษาพฤติกรรมสุขภาพที่ดี ออกกำลังกายสม่ำเสมอ",
-    "ELEVATED": "ควรลดเค็ม ลดอาหารมัน และควบคุมน้ำหนัก",
-    "STAGE 1": "ควรปรึกษาแพทย์และปรับพฤติกรรมการใช้ชีวิต",
-    "STAGE 2": "ควรพบแพทย์เพื่อตรวจและรับคำแนะนำเพิ่มเติม",
-    "SEVERE": "ควรพบแพทย์โดยเร็ว",
-    "EMERGENCY": "ควรไปโรงพยาบาลทันที"
-}
+def parse_condition(text):
+    text = str(text).upper().strip()
 
-# ฟังก์ชันแปลเงื่อนไขข้อความในไฟล์
-def check_condition(value, condition_text):
-    condition_text = str(condition_text).upper()
+    if "LESS THAN" in text:
+        num = int(text.split()[-1])
+        return (None, num, "<")
 
-    if "LESS THAN" in condition_text:
-        num = int(condition_text.split()[-1])
-        return value < num
+    elif "-" in text:
+        low, high = text.split("-")
+        return (int(low.strip()), int(high.strip()), "range")
 
-    elif "-" in condition_text:
-        parts = condition_text.split("-")
-        low = int(parts[0].strip())
-        high = int(parts[1].strip())
+    elif "OR HIGHER" in text:
+        num = int(text.split()[0])
+        return (num, None, ">=")
+
+    elif "HIGHER THAN" in text:
+        num = int(text.split()[-1])
+        return (num, None, ">")
+
+    return (None, None, None)
+
+
+def check_value(value, parsed):
+    low, high, mode = parsed
+
+    if mode == "<":
+        return value < high
+    elif mode == "range":
         return low <= value <= high
-
-    elif "OR HIGHER" in condition_text:
-        num = int(condition_text.split()[0])
-        return value >= num
-
-    elif "HIGHER THAN" in condition_text:
-        num = int(condition_text.split()[-1])
-        return value > num
-
+    elif mode == ">=":
+        return value >= low
+    elif mode == ">":
+        return value > low
     return False
 
 
-# รับค่าจากผู้ใช้
-systolic = st.number_input("ค่า SYSTOLIC (ค่าความดันตัวบน)", min_value=0)
-diastolic = st.number_input("ค่า DIASTOLIC (ค่าความดันตัวล่าง)", min_value=0)
+# เรียงตามความรุนแรง
+df["severity"] = df["BLOOD PRESSURE CATEGORY"].map(severity_order)
+df = df.sort_values(by="severity", ascending=False)
+
+systolic = st.number_input("ค่า SYSTOLIC (ตัวบน)", min_value=0)
+diastolic = st.number_input("ค่า DIASTOLIC (ตัวล่าง)", min_value=0)
 
 if st.button("🔎 ตรวจสอบระดับความดัน"):
 
     if systolic == 0 or diastolic == 0:
         st.warning("กรุณากรอกค่าความดันให้ครบถ้วน")
     else:
+
         result = None
 
-        for index, row in df.iterrows():
+        for _, row in df.iterrows():
 
-            if pd.isna(row["SYSTOLIC mm Hg (top/upper number)"]):
-                continue
-
-            sys_condition = row["SYSTOLIC mm Hg (top/upper number)"]
-            dia_condition = row["DIASTOLIC mm Hg (bottom/lower number)"]
+            sys_parsed = parse_condition(row["SYSTOLIC mm Hg (top/upper number)"])
+            dia_parsed = parse_condition(row["DIASTOLIC mm Hg (bottom/lower number)"])
             logic = str(row["and/or"]).lower()
 
-            sys_match = check_condition(systolic, sys_condition)
-            dia_match = check_condition(diastolic, dia_condition)
+            sys_match = check_value(systolic, sys_parsed)
+            dia_match = check_value(diastolic, dia_parsed)
 
             if logic == "and":
-                if sys_match and dia_match:
-                    result = row["BLOOD PRESSURE CATEGORY"]
-                    break
+                match = sys_match and dia_match
+            else:  # or / and/or
+                match = sys_match or dia_match
 
-            elif logic == "or":
-                if sys_match or dia_match:
-                    result = row["BLOOD PRESSURE CATEGORY"]
-                    break
-
-            elif "and/or" in logic:
-                if sys_match or dia_match:
-                    result = row["BLOOD PRESSURE CATEGORY"]
-                    break
+            if match:
+                result = row["BLOOD PRESSURE CATEGORY"]
+                break
 
         if result:
-
-            thai_result = thai_translation.get(result.upper(), "ไม่พบคำแปล")
-            advice = advice_text.get(result.upper(), "")
-
-            st.markdown("---")
+            thai_result = thai_translation.get(result.upper(), "")
             st.markdown("## 📊 ผลการประเมิน")
 
-            # แสดงสีตามระดับ
-            if result.upper() == "NORMAL":
-                st.success(f"🟢 {thai_result}")
-            elif result.upper() == "ELEVATED":
-                st.info(f"🟡 {thai_result}")
-            elif result.upper() == "STAGE 1":
-                st.warning(f"🟠 {thai_result}")
-            else:
+            if severity_order[result.upper()] >= 4:
                 st.error(f"🔴 {thai_result}")
+            elif severity_order[result.upper()] == 3:
+                st.warning(f"🟠 {thai_result}")
+            elif severity_order[result.upper()] == 2:
+                st.info(f"🟡 {thai_result}")
+            else:
+                st.success(f"🟢 {thai_result}")
 
-            st.write(f"**ระดับภาษาอังกฤษ:** {result}")
-            st.write(f"💡 คำแนะนำ: {advice}")
+            st.write(f"ระดับภาษาอังกฤษ: {result}")
 
         else:
             st.error("ไม่พบระดับที่ตรงเงื่อนไข")
